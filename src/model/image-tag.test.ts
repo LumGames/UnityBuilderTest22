@@ -2,14 +2,14 @@ import ImageTag from './image-tag';
 
 describe('ImageTag', () => {
   const testImageParameters = {
-    editorVersion: '2099.9.f9f9',
+    editorVersion: '2099.9.9f9',
     targetPlatform: 'Test',
     builderPlatform: '',
+    containerRegistryRepository: 'unityci/editor',
+    containerRegistryImageVersion: '3',
   };
 
   const defaults = {
-    repository: 'unityci',
-    name: 'editor',
     image: 'unityci/editor',
   };
 
@@ -21,14 +21,13 @@ describe('ImageTag', () => {
     it('accepts parameters and sets the right properties', () => {
       const image = new ImageTag(testImageParameters);
 
-      expect(image.repository).toStrictEqual('unityci');
-      expect(image.name).toStrictEqual('editor');
+      expect(image.repository).toStrictEqual('unityci/editor');
       expect(image.editorVersion).toStrictEqual(testImageParameters.editorVersion);
       expect(image.targetPlatform).toStrictEqual(testImageParameters.targetPlatform);
       expect(image.builderPlatform).toStrictEqual(testImageParameters.builderPlatform);
     });
 
-    test.each(['2000.0.0f0', '2011.1.11f1'])('accepts %p version format', (version) => {
+    test.each(['2000.0.0f0', '2011.1.11f1', '6000.0.0f1'])('accepts %p version format', (version) => {
       expect(
         () =>
           new ImageTag({
@@ -51,23 +50,27 @@ describe('ImageTag', () => {
   describe('toString', () => {
     it('returns the correct version', () => {
       const image = new ImageTag({
-        editorVersion: '2099.1.1111',
+        editorVersion: '2099.1.1111f1',
         targetPlatform: testImageParameters.targetPlatform,
+        containerRegistryRepository: 'unityci/editor',
+        containerRegistryImageVersion: '3',
       });
       switch (process.platform) {
         case 'win32':
-          expect(image.toString()).toStrictEqual(`${defaults.image}:windows-2099.1.1111-3`);
+          expect(image.toString()).toStrictEqual(`${defaults.image}:windows-2099.1.1111f1-3`);
           break;
         case 'linux':
-          expect(image.toString()).toStrictEqual(`${defaults.image}:ubuntu-2099.1.1111-3`);
+          expect(image.toString()).toStrictEqual(`${defaults.image}:ubuntu-2099.1.1111f1-3`);
           break;
       }
     });
     it('returns customImage if given', () => {
       const image = new ImageTag({
-        editorVersion: '2099.1.1111',
+        editorVersion: '2099.1.1111f1',
         targetPlatform: testImageParameters.targetPlatform,
         customImage: `${defaults.image}:2099.1.1111@347598437689743986`,
+        containerRegistryRepository: 'unityci/editor',
+        containerRegistryImageVersion: '3',
       });
 
       expect(image.toString()).toStrictEqual(image.customImage);
@@ -77,6 +80,8 @@ describe('ImageTag', () => {
       const image = new ImageTag({
         editorVersion: '2019.2.11f1',
         targetPlatform: 'WebGL',
+        containerRegistryRepository: 'unityci/editor',
+        containerRegistryImageVersion: '3',
       });
 
       switch (process.platform) {
@@ -93,6 +98,8 @@ describe('ImageTag', () => {
       const image = new ImageTag({
         editorVersion: '2019.2.11f1',
         targetPlatform: 'NoTarget',
+        containerRegistryRepository: 'unityci/editor',
+        containerRegistryImageVersion: '3',
       });
 
       switch (process.platform) {

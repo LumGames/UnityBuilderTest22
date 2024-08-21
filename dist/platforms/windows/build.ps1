@@ -137,45 +137,49 @@ $unityArgs = @(
     "-batchmode",
     "-nographics",
     "-silent-crashes",
-    "-projectPath", $Env:UNITY_PROJECT_PATH,
-    "-executeMethod", $Env:BUILD_METHOD,
-    "-buildTarget", $Env:BUILD_TARGET,
-    "-customBuildTarget", $Env:BUILD_TARGET,
-    "-customBuildPath", $Env:CUSTOM_BUILD_PATH,
-    "-buildVersion", $Env:VERSION,
-    "-androidVersionCode", $Env:ANDROID_VERSION_CODE,
-    "-androidKeystorePass", $Env:ANDROID_KEYSTORE_PASS,
-    "-androidKeyaliasName", $Env:ANDROID_KEYALIAS_NAME,
-    "-androidKeyaliasPass", $Env:ANDROID_KEYALIAS_PASS,
-    "-androidTargetSdkVersion", $Env:ANDROID_TARGET_SDK_VERSION,
-    "-androidExportType", $Env:ANDROID_EXPORT_TYPE,
-    "-androidSymbolType", $Env:ANDROID_SYMBOL_TYPE,
+    "-customBuildName", "`"$Env:BUILD_NAME`"",
+    "-projectPath", "`"$Env:UNITY_PROJECT_PATH`"",
+    "-executeMethod", "`"$Env:BUILD_METHOD`"",
+    "-buildTarget", "`"$Env:BUILD_TARGET`"",
+    "-customBuildTarget", "`"$Env:BUILD_TARGET`"",
+    "-customBuildPath", "`"$Env:CUSTOM_BUILD_PATH`"",
+    "-buildVersion", "`"$Env:VERSION`"",
+    "-androidVersionCode", "`"$Env:ANDROID_VERSION_CODE`"",
+    "-androidKeystorePass", "`"$Env:ANDROID_KEYSTORE_PASS`"",
+    "-androidKeyaliasName", "`"$Env:ANDROID_KEYALIAS_NAME`"",
+    "-androidKeyaliasPass", "`"$Env:ANDROID_KEYALIAS_PASS`"",
+    "-androidTargetSdkVersion", "`"$Env:ANDROID_TARGET_SDK_VERSION`"",
+    "-androidExportType", "`"$Env:ANDROID_EXPORT_TYPE`"",
+    "-androidSymbolType", "`"$Env:ANDROID_SYMBOL_TYPE`"",
     "-logfile", "-"
 ) + $customParametersArray
 
 # Remove null items as that will fail the Start-Process call
 $unityArgs = $unityArgs | Where-Object { $_ -ne $null }
 
-$process = Start-Process -FilePath "$Env:UNITY_PATH\Editor\Unity.exe" `
-                         -ArgumentList $unityArgs `
-                         -PassThru `
-                         -NoNewWindow
+$unityProcess = Start-Process -FilePath "$Env:UNITY_PATH/Editor/Unity.exe" `
+                              -ArgumentList $unityArgs `
+                              -PassThru `
+                              -NoNewWindow
 
-while (!$process.HasExited) {
-    if ($process.HasExited) {
-      Start-Sleep -Seconds 5
+# Cache the handle so exit code works properly
+# https://stackoverflow.com/questions/10262231/obtaining-exitcode-using-start-process-and-waitforexit-instead-of-wait
+$unityHandle = $unityProcess.Handle
+
+while ($true) {
+    if ($unityProcess.HasExited) {
+      Start-Sleep -Seconds 3
       Get-Process
 
-      Start-Sleep -Seconds 10
-      Get-Process
+      $BUILD_EXIT_CODE = $unityProcess.ExitCode
 
       # Display results
-      if ($process.ExitCode -eq 0)
+      if ($BUILD_EXIT_CODE -eq 0)
       {
           Write-Output "Build Succeeded!!"
       } else
       {
-          Write-Output "$('Build failed, with exit code ')$($process.ExitCode)$('"')"
+          Write-Output "Build failed, with exit code $BUILD_EXIT_CODE"
       }
 
       Write-Output ""
@@ -187,8 +191,8 @@ while (!$process.HasExited) {
       Get-ChildItem $Env:BUILD_PATH_FULL
       Write-Output ""
 
-      exit $process.ExitCode
+      break
     }
 
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 3
 }

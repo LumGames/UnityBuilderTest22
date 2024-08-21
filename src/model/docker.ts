@@ -1,8 +1,7 @@
-import { execWithErrorCheck } from './exec-with-error-check';
 import ImageEnvironmentFactory from './image-environment-factory';
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { ExecOptions } from '@actions/exec';
+import { ExecOptions, exec } from '@actions/exec';
 import { DockerParameters, StringKeyValuePair } from './shared-types';
 
 class Docker {
@@ -12,11 +11,9 @@ class Docker {
     silent: boolean = false,
     overrideCommands: string = '',
     additionalVariables: StringKeyValuePair[] = [],
-    // eslint-disable-next-line unicorn/no-useless-undefined
-    options: ExecOptions | undefined = undefined,
+    options: ExecOptions = {},
     entrypointBash: boolean = false,
-    errorWhenMissingUnityBuildResults: boolean = true,
-  ) {
+  ): Promise<number> {
     let runCommand = '';
     switch (process.platform) {
       case 'linux':
@@ -24,13 +21,15 @@ class Docker {
         break;
       case 'win32':
         runCommand = this.getWindowsCommand(image, parameters);
+        break;
+      default:
+        throw new Error(`Operation system, ${process.platform}, is not supported yet.`);
     }
-    if (options) {
-      options.silent = silent;
-      await execWithErrorCheck(runCommand, undefined, options, errorWhenMissingUnityBuildResults);
-    } else {
-      await execWithErrorCheck(runCommand, undefined, { silent }, errorWhenMissingUnityBuildResults);
-    }
+
+    options.silent = silent;
+    options.ignoreReturnCode = true;
+
+    return await exec(runCommand, undefined, options);
   }
 
   static getLinuxCommand(
@@ -62,7 +61,6 @@ class Docker {
             --workdir ${dockerWorkspacePath} \
             --rm \
             ${ImageEnvironmentFactory.getEnvVarString(parameters, additionalVariables)} \
-            --env UNITY_SERIAL \
             --env GITHUB_WORKSPACE=${dockerWorkspacePath} \
             --env GIT_CONFIG_EXTENSIONS \
             ${gitPrivateToken ? `--env GIT_PRIVATE_TOKEN="${gitPrivateToken}"` : ''} \
@@ -74,6 +72,7 @@ class Docker {
             --volume "${actionFolder}/platforms/ubuntu/steps:/steps:z" \
             --volume "${actionFolder}/platforms/ubuntu/entrypoint.sh:/entrypoint.sh:z" \
             --volume "${actionFolder}/unity-config:/usr/share/unity3d/config/:z" \
+            --volume "${actionFolder}/BlankProject":"/BlankProject:z" \
             --cpus=${dockerCpuLimit} \
             --memory=${dockerMemoryLimit} \
             ${sshAgent ? `--volume ${sshAgent}:/ssh-agent` : ''} \
@@ -93,7 +92,6 @@ class Docker {
     const {
       workspace,
       actionFolder,
-      unitySerial,
       gitPrivateToken,
       dockerWorkspacePath,
       dockerCpuLimit,
@@ -105,7 +103,6 @@ class Docker {
             --workdir c:${dockerWorkspacePath} \
             --rm \
             ${ImageEnvironmentFactory.getEnvVarString(parameters)} \
-            --env UNITY_SERIAL="${unitySerial}" \
             --env GITHUB_WORKSPACE=c:${dockerWorkspacePath} \
             ${gitPrivateToken ? `--env GIT_PRIVATE_TOKEN="${gitPrivateToken}"` : ''} \
             --volume "${workspace}":"c:${dockerWorkspacePath}" \
@@ -116,6 +113,7 @@ class Docker {
             --volume "C:/ProgramData/Microsoft/VisualStudio":"C:/ProgramData/Microsoft/VisualStudio" \
             --volume "${actionFolder}/default-build-script":"c:/UnityBuilderAction" \
             --volume "${actionFolder}/platforms/windows":"c:/steps" \
+            --volume "${actionFolder}/unity-config":"C:/ProgramData/Unity/config" \
             --volume "${actionFolder}/BlankProject":"c:/BlankProject" \
             --cpus=${dockerCpuLimit} \
             --memory=${dockerMemoryLimit} \
